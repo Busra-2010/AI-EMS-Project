@@ -3,7 +3,7 @@ from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_community.vectorstores import FAISS
 from langchain_community.document_loaders import TextLoader
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_huggingface import FastEmbedEmbeddings
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import RunnableLambda
 from dotenv import load_dotenv
@@ -43,9 +43,9 @@ def initialize_chatbot():
         )
         chunks = text_splitter.split_documents(documents)
 
-        embeddings = HuggingFaceEmbeddings(
-            model_name="all-MiniLM-L6-v2"
-        )
+        embeddings = FastEmbedEmbeddings(
+            model_name="BAAI/bge-small-en-v1.5"
+       )
 
         vectorstore = FAISS.from_documents(chunks, embeddings)
         retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
