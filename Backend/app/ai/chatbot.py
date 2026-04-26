@@ -3,9 +3,9 @@ from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_community.vectorstores import FAISS
 from langchain_community.document_loaders import TextLoader
-from langchain_huggingface import HuggingFaceEmbeddings   # ← fixed deprecation
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_core.runnables import RunnablePassthrough, RunnableLambda
+from langchain_core.runnables import RunnableLambda
 from dotenv import load_dotenv
 import os
 
@@ -21,6 +21,11 @@ def initialize_chatbot():
     global qa_chain, retriever, is_initialized
 
     if is_initialized:
+        return
+
+    # Don't initialize if no API key
+    if not os.getenv("GROQ_API_KEY"):
+        print("❌ No GROQ_API_KEY found, chatbot disabled")
         return
 
     try:
@@ -45,9 +50,6 @@ def initialize_chatbot():
         vectorstore = FAISS.from_documents(chunks, embeddings)
         retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
 
-        if not os.getenv("GROQ_API_KEY"):
-            raise ValueError("Missing GROQ_API_KEY in .env")
-
         llm = ChatGroq(
             model="llama-3.3-70b-versatile",
             temperature=0.3,
@@ -68,7 +70,6 @@ Context:
         def format_docs(docs):
             return "\n\n".join(doc.page_content for doc in docs)
 
-        # ✅ FIX: extract each key properly using RunnableLambda
         qa_chain = (
             {
                 "context": RunnableLambda(lambda x: x["input"]) | retriever | format_docs,
@@ -99,7 +100,7 @@ def get_chatbot_response(question: str) -> str:
     try:
         result = qa_chain.invoke({
             "input": question,
-            "chat_history": chat_history   # ✅ always a list, never RunnablePassthrough
+            "chat_history": chat_history
         })
 
         answer = result.content

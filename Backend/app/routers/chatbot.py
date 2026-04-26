@@ -6,7 +6,7 @@ from app.ai.chatbot import get_chatbot_response, initialize_chatbot
 router = APIRouter(prefix="/chatbot", tags=["AI Chatbot"])
 
 # Initialize chatbot when router loads
-initialize_chatbot()
+# initialize_chatbot()
 
 class ChatRequest(BaseModel):
     message: str
