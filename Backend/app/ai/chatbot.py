@@ -1,9 +1,6 @@
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage, AIMessage
-from langchain_community.vectorstores import FAISS
-from langchain_community.document_loaders import TextLoader
-from langchain_huggingface import FastEmbedEmbeddings
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import RunnableLambda
 from dotenv import load_dotenv
@@ -16,39 +13,30 @@ retriever = None
 is_initialized = False
 chat_history = []
 
-
 def initialize_chatbot():
     global qa_chain, retriever, is_initialized
 
     if is_initialized:
         return
 
-    # Don't initialize if no API key
     if not os.getenv("GROQ_API_KEY"):
         print("❌ No GROQ_API_KEY found, chatbot disabled")
         return
 
     try:
+        # Load HR policy document manually
         doc_path = os.path.join(
             os.path.dirname(__file__),
             '../../documents/hr_policy.txt'
         )
 
-        loader = TextLoader(doc_path, encoding='utf-8')
-        documents = loader.load()
+        with open(doc_path, 'r', encoding='utf-8') as f:
+            hr_policy_text = f.read()
 
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=500,
-            chunk_overlap=50
-        )
-        chunks = text_splitter.split_documents(documents)
-
-        embeddings = FastEmbedEmbeddings(
-            model_name="BAAI/bge-small-en-v1.5"
-       )
-
-        vectorstore = FAISS.from_documents(chunks, embeddings)
-        retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
+        # Store as simple text — no vector DB needed!
+        # We'll pass the full document as context
+        global hr_context
+        hr_context = hr_policy_text
 
         llm = ChatGroq(
             model="llama-3.3-70b-versatile",
@@ -58,48 +46,42 @@ def initialize_chatbot():
 
         answer_prompt = ChatPromptTemplate.from_messages([
             ("system", """You are an HR policy assistant.
-Answer questions based only on the provided HR policy context.
+Answer questions based only on the provided HR policy context below.
 If the answer is not in the context, say "I don't know".
+Be clear, concise and professional.
 
-Context:
+HR Policy Context:
 {context}"""),
             MessagesPlaceholder("chat_history"),
             ("human", "{input}")
         ])
 
-        def format_docs(docs):
-            return "\n\n".join(doc.page_content for doc in docs)
-
-        qa_chain = (
-            {
-                "context": RunnableLambda(lambda x: x["input"]) | retriever | format_docs,
-                "input": RunnableLambda(lambda x: x["input"]),
-                "chat_history": RunnableLambda(lambda x: x["chat_history"])
-            }
-            | answer_prompt
-            | llm
-        )
+        global llm_chain
+        llm_chain = answer_prompt | llm
 
         is_initialized = True
-        print("✅ HR Chatbot initialized (LangChain 1.x + Groq)")
+        print("✅ HR Chatbot initialized (Simple RAG + Groq)")
 
     except Exception as e:
         print(f"❌ Chatbot initialization error: {e}")
         is_initialized = False
 
+hr_context = ""
+llm_chain = None
 
 def get_chatbot_response(question: str) -> str:
-    global qa_chain, is_initialized, chat_history
+    global is_initialized, chat_history, hr_context, llm_chain
 
     if not is_initialized:
         initialize_chatbot()
 
-    if not is_initialized or qa_chain is None:
+    if not is_initialized or llm_chain is None:
         return "Sorry, chatbot is not available. Check API key or setup."
 
     try:
-        result = qa_chain.invoke({
+        result = llm_chain.invoke({
             "input": question,
+            "context": hr_context,
             "chat_history": chat_history
         })
 
