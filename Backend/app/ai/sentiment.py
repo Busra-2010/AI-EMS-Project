@@ -1,41 +1,46 @@
-from transformers import pipeline
-
-# Load the sentiment analysis model once when the app starts
-# Using a lightweight model that works offline
-sentiment_pipeline = pipeline(
-    "sentiment-analysis",
-    model="distilbert-base-uncased-finetuned-sst-2-english"
-)
-
 def analyze_sentiment(text: str) -> dict:
     """
-    Analyze the sentiment of a feedback text.
-    Returns a dict with:
-      - sentiment: 'positive', 'negative', or 'neutral'
-      - score: confidence score between 0.0 and 1.0
+    Simple rule-based sentiment analysis
+    No ML libraries needed — works everywhere!
     """
-    if not text or len(text.strip()) == 0:
-        return {"sentiment": "neutral", "score": 0.0}
+    if not text:
+        return {"sentiment": "neutral", "score": 0.5}
 
-    try:
-        # Truncate text to 512 tokens max (model limit)
-        result = sentiment_pipeline(text[:512])[0]
+    text_lower = text.lower()
 
-        label = result["label"].lower()   # 'positive' or 'negative'
-        score = round(result["score"], 4) # confidence score
+    # Positive words
+    positive_words = [
+        "excellent", "outstanding", "exceptional", "great", "good",
+        "fantastic", "wonderful", "amazing", "superb", "brilliant",
+        "impressive", "commendable", "dedicated", "hardworking",
+        "creative", "innovative", "reliable", "consistent", "strong",
+        "positive", "best", "perfect", "skilled", "talented", "efficient",
+        "effective", "proactive", "motivated", "enthusiastic", "helpful"
+    ]
 
-        # Map to our 3-category system
-        # If positive with low confidence → neutral
-        if label == "positive" and score < 0.65:
-            sentiment = "neutral"
-        elif label == "negative" and score < 0.65:
-            sentiment = "neutral"
-        else:
-            sentiment = label
+    # Negative words
+    negative_words = [
+        "poor", "bad", "terrible", "awful", "horrible", "weak",
+        "disappointing", "unsatisfactory", "needs improvement", "lacking",
+        "underperforming", "inconsistent", "unreliable", "slow",
+        "inefficient", "negative", "worst", "fail", "failed", "miss",
+        "missed", "late", "absent", "careless", "unprofessional"
+    ]
 
-        return {"sentiment": sentiment, "score": score}
+    # Count matches
+    positive_count = sum(1 for word in positive_words if word in text_lower)
+    negative_count = sum(1 for word in negative_words if word in text_lower)
 
-    except Exception as e:
-        # If AI fails, return neutral as fallback
-        print(f"Sentiment analysis error: {e}")
-        return {"sentiment": "neutral", "score": 0.0}
+    total = positive_count + negative_count
+
+    if total == 0:
+        return {"sentiment": "neutral", "score": 0.5}
+
+    positive_ratio = positive_count / total
+
+    if positive_ratio >= 0.6:
+        return {"sentiment": "positive", "score": round(positive_ratio, 2)}
+    elif positive_ratio <= 0.4:
+        return {"sentiment": "negative", "score": round(1 - positive_ratio, 2)}
+    else:
+        return {"sentiment": "neutral", "score": 0.5}
