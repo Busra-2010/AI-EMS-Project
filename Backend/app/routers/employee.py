@@ -13,7 +13,7 @@ router = APIRouter(prefix="/employees", tags=["Employees"])
 def create_employee(
     request: EmployeeCreate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_admin_user)
+    current_user=Depends(get_manager_or_admin)
 ):
     """Create a new employee"""
     existing = db.query(Employee).filter(Employee.email == request.email).first()
