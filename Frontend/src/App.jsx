@@ -37,7 +37,7 @@ export default function App() {
 
       {/* Admin only */}
       <Route path="/create-user" element={<AdminRoute><CreateUserPage /></AdminRoute>} />
-      <Route path="/employees/add" element={<AdminRoute><AddEmployeePage /></AdminRoute>} />
+      <Route path="/employees/add" element={<PrivateRoute><AddEmployeePage /></PrivateRoute>} />
       <Route path="/employees/edit/:id" element={<AdminRoute><EditEmployeePage /></AdminRoute>} />
       <Route path="/payroll" element={<AdminRoute><PayrollPage /></AdminRoute>} />
       <Route path="/departments" element={<AdminRoute><DepartmentPage /></AdminRoute>} />
