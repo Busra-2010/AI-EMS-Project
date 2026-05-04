@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../context/AuthContext';
 
 export default function LeavePage() {
+  const { user } = useAuth();                                                  
+  const isAdminOrManager = user?.role === 'admin' || user?.role === 'manager';
   const [leaves, setLeaves] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
